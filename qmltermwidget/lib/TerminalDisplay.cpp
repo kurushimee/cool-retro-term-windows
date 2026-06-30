@@ -1947,6 +1947,7 @@ void TerminalDisplay::drawContents(QPainter &paint, const QRect &rect)
       bool nxtDoubleWidth = false;
       int nxtCharWidth = 0;
       while (x+len <= rlx &&
+             !perCellRendition &&
              _image[loc(x+len,y)].foregroundColor == currentForeground &&
              _image[loc(x+len,y)].backgroundColor == currentBackground &&
              _image[loc(x+len,y)].rendition == currentRendition &&

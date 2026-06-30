@@ -45,6 +45,8 @@ QtObject {
 
     property bool startFullscreen: false
 
+    property bool hideTabBar: false
+
     property bool showTerminalSize: true
     property real windowScaling: 1.0
 
@@ -168,6 +170,7 @@ QtObject {
             "fontScaling": fontScaling,
             "showMenubar": showMenubar,
             "startFullscreen": startFullscreen,
+            "hideTabBar": hideTabBar,
             "bloomQuality": bloomQuality,
             "burnInQuality": burnInQuality,
             "useCustomCommand": useCustomCommand,
@@ -258,6 +261,8 @@ QtObject {
         showMenubar = settings.showMenubar !== undefined ? settings.showMenubar : showMenubar
 
         startFullscreen = settings.startFullscreen !== undefined ? settings.startFullscreen : startFullscreen
+
+        hideTabBar = settings.hideTabBar !== undefined ? settings.hideTabBar : hideTabBar
 
         bloomQuality = settings.bloomQuality !== undefined ? settings.bloomQuality : bloomQuality
         burnInQuality = settings.burnInQuality

@@ -66,6 +66,12 @@ ColumnLayout {
                 checked: appSettings.showMenubar
                 onCheckedChanged: appSettings.showMenubar = checked
             }
+            CheckBox {
+                id: hideTabBar
+                text: qsTr("Hide tab bar (use Alt+1-9 / Ctrl+Shift+T)")
+                checked: appSettings.hideTabBar
+                onCheckedChanged: appSettings.hideTabBar = checked
+            }
         }
     }
 

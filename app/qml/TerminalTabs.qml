@@ -68,7 +68,7 @@ Item {
             Layout.fillWidth: true
             height: rowLayout.implicitHeight
             color: palette.window
-            visible: tabsModel.count > 1
+            visible: tabsModel.count > 1 && !appSettings.hideTabBar
 
             RowLayout {
                 id: rowLayout

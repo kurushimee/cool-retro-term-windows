@@ -28,6 +28,7 @@ SOURCES += main.cpp \
     fontlistmodel.cpp
 
 macx:ICON = icons/crt.icns
+win32:RC_ICONS = icons/cool-retro-term.ico
 win32:LIBS += -ladvapi32
 
 RESOURCES += qml/resources.qrc

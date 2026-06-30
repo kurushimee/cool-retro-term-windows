@@ -1,0 +1,78 @@
+name: Build Windows
+
+# Builds a patched Windows cool-retro-term.exe (menu-bar fix + embedded icon)
+# against Qt 6.8.3 / MSVC 2022 x64 to match the shipped runtime DLLs.
+on:
+  push:
+    branches: [ windows-fixes ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build (Windows, exe)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt 6.8.3 (MSVC 2022 x64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.8.3
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qt5compat qtshadertools
+          cache: true
+
+      - name: Set up MSVC (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: qmake
+        run: qmake cool-retro-term.pro -spec win32-msvc
+
+      - name: nmake
+        run: nmake
+
+      - name: Stage artifacts
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path . -Recurse -Filter cool-retro-term.exe -ErrorAction SilentlyContinue |
+                  Where-Object { $_.FullName -notmatch '\\deploy\\' } |
+                  Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $exe) { throw "Build output cool-retro-term.exe not found" }
+          Write-Host "Built exe: $($exe.FullName) ($([math]::Round($exe.Length/1MB,2)) MB)"
+
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Copy-Item $exe.FullName out\cool-retro-term.exe -Force
+
+          # Full deploy zip (fallback): drop the new exe + patched keytab into the vendored tree.
+          if (Test-Path deploy) {
+            Copy-Item out\cool-retro-term.exe deploy\cool-retro-term.exe -Force
+            $deployKt = 'deploy\qml\QMLTermWidget\kb-layouts\default.keytab'
+            $srcKt = 'qmltermwidget\lib\kb-layouts\default.keytab'
+            if ((Test-Path $deployKt) -and (Test-Path $srcKt)) {
+              Copy-Item $srcKt $deployKt -Force
+            }
+            Compress-Archive -Path deploy\* -DestinationPath out\cool-retro-term-windows.zip -Force
+          }
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: cool-retro-term-exe
+          path: out/cool-retro-term.exe
+          if-no-files-found: error
+
+      - name: Upload full zip (fallback)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cool-retro-term-windows-zip
+          path: out/cool-retro-term-windows.zip
+          if-no-files-found: ignore

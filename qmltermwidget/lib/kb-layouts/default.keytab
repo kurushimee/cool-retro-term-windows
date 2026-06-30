@@ -32,14 +32,15 @@ key Return-Shift+NewLine : "\r\n"
 
 key Return+Shift         : "\EOM"
 
-# Backspace and Delete codes are preserving CTRL-H.
+# Backspace and Delete codes.
 #
-# Backspace without CTRL sends '^H'; this matches XTerm behaviour
-# BS, hex \x08, \b
-key Backspace -Control : "\b"
+# Windows/ConPty ordering (inverse of the original XTerm ordering, which is
+# backwards under ConPty): plain Backspace sends '^?' (DEL, \x7f) so PSReadLine
+# deletes one character; Ctrl+Backspace sends '^H' (\b, \x08) so ConPty maps it
+# to Ctrl+Backspace and PSReadLine deletes the previous word.
+key Backspace -Control : "\x7f"
 
-# Match xterm behaviour: Backspace sends '^?' when Control is pressed
-key Backspace +Control : "\x7f"
+key Backspace +Control : "\b"
 
 # Arrow keys in VT52 mode
 # shift up/down are reserved for scrolling.

@@ -136,7 +136,7 @@ private:
   void resetModes();
 
   void resetTokenizer();
-  #define MAX_TOKEN_LENGTH 256 // Max length of tokens (e.g. window title)
+  #define MAX_TOKEN_LENGTH (512 * 1024) // Allow long OSC 52 clipboard payloads (was 256)
   void addToCurrentToken(wchar_t cc);
   wchar_t tokenBuffer[MAX_TOKEN_LENGTH]; //FIXME: overflow?
   int tokenBufferPos;

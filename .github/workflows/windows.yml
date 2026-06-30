@@ -1,6 +1,6 @@
 name: Build Windows
 
-# Builds a patched Windows cool-retro-term.exe (menu-bar fix + embedded icon)
+# Builds patched Windows artifacts (cool-retro-term.exe + qmltermwidget.dll)
 # against Qt 6.8.3 / MSVC 2022 x64 to match the shipped runtime DLLs.
 on:
   push:
@@ -52,9 +52,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path out | Out-Null
           Copy-Item $exe.FullName out\cool-retro-term.exe -Force
 
-          # Full deploy zip (fallback): drop the new exe + patched keytab into the vendored tree.
+          $dll = Get-ChildItem -Path . -Recurse -Filter qmltermwidget.dll -ErrorAction SilentlyContinue |
+                  Where-Object { $_.FullName -notmatch '\\deploy\\' } |
+                  Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $dll) { throw "Build output qmltermwidget.dll not found" }
+          Write-Host "Built dll: $($dll.FullName) ($([math]::Round($dll.Length/1KB,0)) KB)"
+          Copy-Item $dll.FullName out\qmltermwidget.dll -Force
+
+          # Full deploy zip (fallback): drop the new exe + dll + patched keytab into the vendored tree.
           if (Test-Path deploy) {
             Copy-Item out\cool-retro-term.exe deploy\cool-retro-term.exe -Force
+            $deployDll = 'deploy\qml\QMLTermWidget\qmltermwidget.dll'
+            if (Test-Path $deployDll) { Copy-Item out\qmltermwidget.dll $deployDll -Force }
             $deployKt = 'deploy\qml\QMLTermWidget\kb-layouts\default.keytab'
             $srcKt = 'qmltermwidget\lib\kb-layouts\default.keytab'
             if ((Test-Path $deployKt) -and (Test-Path $srcKt)) {
@@ -68,6 +77,13 @@ jobs:
         with:
           name: cool-retro-term-exe
           path: out/cool-retro-term.exe
+          if-no-files-found: error
+
+      - name: Upload dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: cool-retro-term-dll
+          path: out/qmltermwidget.dll
           if-no-files-found: error
 
       - name: Upload full zip (fallback)

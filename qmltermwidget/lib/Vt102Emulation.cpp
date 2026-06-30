@@ -35,6 +35,8 @@
 #include <QEvent>
 #include <QKeyEvent>
 #include <QDebug>
+#include <QGuiApplication>
+#include <QClipboard>
 
 // Konsole
 #include "KeyboardTranslator.h"
@@ -406,6 +408,35 @@ void Vt102Emulation::processWindowAttributeChange()
   // 0x07 or 0x92. Note that as control characters in OSC text parts are
   // ignored, only the second char in ST ("\e\\") is appended to tokenBuffer.
   QString newValue = QString::fromWCharArray(tokenBuffer + i + 1, tokenBufferPos-i-2);
+
+  // OSC 52: clipboard access. Format: ESC ] 52 ; <selection> ; <data> ST
+  //   <data> == "?"  -> read request: reply with the clipboard, base64-encoded.
+  //   otherwise      -> write request: set the clipboard from base64 <data>.
+  // Both directions are implemented intentionally; this is a local terminal.
+  if (attributeToChange == 52)
+  {
+    const int sep = newValue.indexOf(QLatin1Char(';'));
+    const QString data = (sep >= 0) ? newValue.mid(sep + 1) : newValue;
+    QClipboard* clipboard = QGuiApplication::clipboard();
+    if (clipboard)
+    {
+      if (data == QLatin1String("?"))
+      {
+        const QByteArray selection = (sep > 0) ? newValue.left(sep).toLatin1()
+                                               : QByteArray("c");
+        const QByteArray reply = QByteArray("\033]52;") + selection + ';'
+                               + clipboard->text().toUtf8().toBase64()
+                               + "\033\\";
+        sendString(reply.constData(), reply.length());
+      }
+      else
+      {
+        const QByteArray decoded = QByteArray::fromBase64(data.toLatin1());
+        clipboard->setText(QString::fromUtf8(decoded));
+      }
+    }
+    return;
+  }
 
   _pendingTitleUpdates[attributeToChange] = newValue;
   _titleUpdateTimer->start(20);

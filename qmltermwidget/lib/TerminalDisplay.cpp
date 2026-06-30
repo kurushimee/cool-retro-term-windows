@@ -1936,6 +1936,13 @@ void TerminalDisplay::drawContents(QPainter &paint, const QRect &rect)
       CharacterColor currentBackground = _image[loc(x,y)].backgroundColor;
       quint8 currentRendition = _image[loc(x,y)].rendition;
 
+      // Bold/italic glyphs can advance wider than _fontWidth; grouping them into
+      // one drawText run lets them drift off the fixed cell grid (overlapping the
+      // next cell and swallowing following spaces). Draw such cells one at a time
+      // so each stays pinned to its column.
+      bool perCellRendition = ((currentRendition & RE_BOLD) && _boldIntense)
+                           || ((currentRendition & RE_ITALIC) && _italicEnabled);
+
       quint32 nxtC = 0;
       bool nxtDoubleWidth = false;
       int nxtCharWidth = 0;

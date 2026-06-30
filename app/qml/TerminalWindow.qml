@@ -31,6 +31,7 @@ ApplicationWindow {
 
     // Show the window once it is ready.
     Component.onCompleted: {
+        fullscreen = appSettings.startFullscreen
         visible = true
     }
 
@@ -40,7 +41,10 @@ ApplicationWindow {
     visible: false
 
     property bool fullscreen: false
-    onFullscreenChanged: visibility = (fullscreen ? Window.FullScreen : Window.Windowed)
+    onFullscreenChanged: {
+        visibility = (fullscreen ? Window.FullScreen : Window.Windowed)
+        appSettings.startFullscreen = fullscreen
+    }
 
     menuBar: WindowMenu { }
 

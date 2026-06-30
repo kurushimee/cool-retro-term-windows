@@ -43,6 +43,8 @@ QtObject {
     // GENERAL SETTINGS ///////////////////////////////////////////////////////
     property bool showMenubar: false
 
+    property bool startFullscreen: false
+
     property bool showTerminalSize: true
     property real windowScaling: 1.0
 
@@ -165,6 +167,7 @@ QtObject {
             "showTerminalSize": showTerminalSize,
             "fontScaling": fontScaling,
             "showMenubar": showMenubar,
+            "startFullscreen": startFullscreen,
             "bloomQuality": bloomQuality,
             "burnInQuality": burnInQuality,
             "useCustomCommand": useCustomCommand,
@@ -252,6 +255,8 @@ QtObject {
         fontScaling = settings.fontScaling !== undefined ? settings.fontScaling : fontScaling
 
         showMenubar = settings.showMenubar !== undefined ? settings.showMenubar : showMenubar
+
+        startFullscreen = settings.startFullscreen !== undefined ? settings.startFullscreen : startFullscreen
 
         bloomQuality = settings.bloomQuality !== undefined ? settings.bloomQuality : bloomQuality
         burnInQuality = settings.burnInQuality

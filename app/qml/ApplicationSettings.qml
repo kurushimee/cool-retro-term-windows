@@ -297,8 +297,11 @@ QtObject {
         windowOpacity = settings.windowOpacity
                 !== undefined ? settings.windowOpacity : windowOpacity
 
-        fontName = settings.fontName !== undefined ? settings.fontName : fontName
+        // fontSource must be applied before fontName: FontManager filters the
+        // font list by source and resets an out-of-source name to the first
+        // match, so a saved system font is lost if the name is set first.
         fontSource = settings.fontSource !== undefined ? settings.fontSource : fontSource
+        fontName = settings.fontName !== undefined ? settings.fontName : fontName
         fontWidth = settings.fontWidth !== undefined ? settings.fontWidth : fontWidth
         lineSpacing = settings.lineSpacing !== undefined ? settings.lineSpacing : lineSpacing
 

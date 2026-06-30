@@ -199,6 +199,7 @@ QtObject {
             "fontName": fontName,
             "fontSource": fontSource,
             "fontWidth": fontWidth,
+            "lineSpacing": lineSpacing,
             "margin": _margin,
             "blinkingCursor": blinkingCursor,
             "frameSize": _frameSize,

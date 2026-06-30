@@ -31,8 +31,11 @@ ApplicationWindow {
 
     // Show the window once it is ready.
     Component.onCompleted: {
-        fullscreen = appSettings.startFullscreen
         visible = true
+        // Apply persisted fullscreen after the window is shown: setting it
+        // earlier is overridden by visible/show() and only flips the menu check.
+        if (appSettings.startFullscreen)
+            Qt.callLater(function() { terminalWindow.fullscreen = true })
     }
 
     minimumWidth: 320

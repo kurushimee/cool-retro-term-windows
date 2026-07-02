@@ -53,6 +53,16 @@
 #include <QUrl>
 #include <QDrag>
 
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 // KDE
 //#include <kshell.h>
 //#include <KColorScheme>
@@ -3232,6 +3242,51 @@ int TerminalDisplay::motionAfterPasting()
     return mMotionAfterPasting;
 }
 
+#ifdef Q_OS_WIN
+// QWindowsKeyMapper builds its per-key text cache with stateful ToUnicode
+// probing; a keyboard layout switch during typing can corrupt cache entries,
+// after which affected keys deliver QKeyEvents with empty text() for the rest
+// of the process lifetime (unfixed through Qt 6.11). The kernel layout tables
+// themselves stay healthy, so when a printable key arrives without text,
+// re-derive the character from them. Flag 0x4 = query without mutating
+// kernel dead-key state (Windows 10 1607+).
+static QString recoverKeyTextFromKernel(const QKeyEvent* event)
+{
+    if (!event->text().isEmpty())
+        return QString();
+    if (event->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))
+        return QString();
+    const quint32 virtualKey = event->nativeVirtualKey();
+    if (!virtualKey)
+        return QString();
+
+    BYTE keyState[256];
+    if (!GetKeyboardState(keyState))
+        return QString();
+    // Trust the event's modifiers over the async kernel snapshot: a phantom
+    // held modifier is part of the failure mode being worked around.
+    keyState[VK_CONTROL] = keyState[VK_LCONTROL] = keyState[VK_RCONTROL] = 0;
+    keyState[VK_MENU] = keyState[VK_LMENU] = keyState[VK_RMENU] = 0;
+    const BYTE shift = (event->modifiers() & Qt::ShiftModifier) ? 0x80 : 0;
+    keyState[VK_SHIFT] = keyState[VK_LSHIFT] = keyState[VK_RSHIFT] = shift;
+
+    wchar_t buffer[8] = {};
+    const int length = ToUnicodeEx(virtualKey, event->nativeScanCode(),
+                                   keyState, buffer, 8, 0x4,
+                                   GetKeyboardLayout(0));
+    // length < 0 is a genuine dead key: emit nothing rather than a wrong char.
+    if (length <= 0)
+        return QString();
+    const QString text = QString::fromWCharArray(buffer, length);
+    // Keys like Escape or Enter translate to ASCII control characters here;
+    // those must keep flowing through the keytab instead.
+    for (const QChar c : text)
+        if (c.unicode() < 0x20 || c.unicode() == 0x7f)
+            return QString();
+    return text;
+}
+#endif
+
 void TerminalDisplay::keyPressEvent( QKeyEvent* event )
 {
     _actSel=0; // Key stroke implies a screen update, so TerminalDisplay won't
@@ -3246,6 +3301,20 @@ void TerminalDisplay::keyPressEvent( QKeyEvent* event )
       else
         _cursorBlinking = false;
     }
+
+#ifdef Q_OS_WIN
+    const QString recoveredText = recoverKeyTextFromKernel(event);
+    if (!recoveredText.isEmpty())
+    {
+        QKeyEvent patched(event->type(), event->key(), event->modifiers(),
+                          event->nativeScanCode(), event->nativeVirtualKey(),
+                          event->nativeModifiers(), recoveredText,
+                          event->isAutoRepeat(), event->count());
+        emit keyPressedSignal(&patched, false);
+        event->accept();
+        return;
+    }
+#endif
 
     emit keyPressedSignal(event, false);
 
@@ -3310,6 +3379,22 @@ QVariant TerminalDisplay::inputMethodQuery( Qt::InputMethodQuery query ) const
 bool TerminalDisplay::handleShortcutOverrideEvent(QKeyEvent* keyEvent)
 {
     int modifiers = keyEvent->modifiers();
+
+    // Keep ordinary printable input out of Qt's shortcut system entirely.
+    // Its matching consults QWindowsKeyMapper::possibleKeys(), which reads the
+    // same per-key cache that goes stale after layout switches (see
+    // recoverKeyTextFromKernel above); a poisoned entry can make a plain key
+    // match an app shortcut and vanish before keyPressEvent ever fires. The
+    // empty-text case is included so a corrupted printable key still reaches
+    // keyPressEvent for recovery.
+    const int passthroughModifiers =
+        int(Qt::ShiftModifier) | int(Qt::KeypadModifier) | int(Qt::GroupSwitchModifier);
+    if ((modifiers & ~passthroughModifiers) == 0
+            && (!keyEvent->text().isEmpty() || keyEvent->key() < int(Qt::Key_Escape)))
+    {
+        keyEvent->accept();
+        return true;
+    }
 
     //  When a possible shortcut combination is pressed,
     //  emit the overrideShortcutCheck() signal to allow the host
